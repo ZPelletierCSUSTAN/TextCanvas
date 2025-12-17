@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-container">
+    <h1>Instructions</h1>
+    <hr>
+    <p>Follow these steps to use <strong>TextCanvas</strong>:</p>
+    <ul class="instruction-list">
+        <li><strong>Select Source:</strong> Toggle between Device or URL sources. Device source is strictly Drag & Drop.</li>
+        <li><strong>Managing State:</strong> Use the <strong>Reset</strong> button to revert image settings, or <strong>Delete Image</strong> (or images) to remove image files entirely.</li>
+        <li><strong>Output Styles:</strong> Experiment with LCD Subpixel for high fidelity, or Matrix and ASCII for classic looks.</li>
+        <li><strong>Rate Limits:</strong> To ensure performance, PNG downloads are limited to 5 every minute.</li>
+        <li><strong>Save:</strong> Download your creations as <strong>PNG, Zip, or Text</strong>.</li>
+    </ul>
+</div>
+{% endblock %}

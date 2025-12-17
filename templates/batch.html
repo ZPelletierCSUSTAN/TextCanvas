@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="batch-layout-container">
+    <div class="controls-panel batch-controls">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2 style="margin:0;">TextCanvas Batch Generator</h2>
+            <div style="display:flex; gap:5px;">
+                <button type="button" onclick="resetBatchSettings()" class="btn-small">Reset</button>
+                <button type="button" onclick="deleteAllBatch()" class="btn-small" style="color:red; border-color:red;">Delete All Images</button>
+            </div>
+        </div>
+
+        <div id="batch-error" class="error-banner" style="display:none;"></div>
+
+        <form action="/batch/download" method="post" enctype="multipart/form-data" id="batch-form">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div class="control-section" style="border:none;">
+                    <label>1. Sources (Max 10)</label>
+                    <div class="source-toggle">
+                        <button type="button" class="toggle-btn" id="btn-device" onclick="switchBatchSource('device')">Device IMG Source</button>
+                        <button type="button" class="toggle-btn" id="btn-url" onclick="switchBatchSource('url')">URL IMG Source</button>
+                    </div>
+
+                    <div id="source-device" class="source-content" style="display:none;">
+                        <div class="drop-zone" id="batch-drop-zone" style="height:80px; cursor: default;">
+                            <span class="drop-zone__prompt">Drag & Drop Files (Max 10)</span>
+                        </div>
+                        <input type="file" name="images" id="batch-files" style="display:none;" multiple>
+                        <div class="batch-mini-previews" id="device-thumbs"></div>
+                    </div>
+
+                    <div id="source-url" class="source-content" style="display:none;">
+                        <textarea name="image_urls" id="batch-urls" rows="5" placeholder="URLs per line..."></textarea>
+                        <div class="batch-mini-previews" id="url-thumbs"></div>
+                    </div>
+                </div>
+
+                <div class="control-section" style="border:none;">
+                    <label>2. Global Settings</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <select name="mode">
+                            <option value="subpixel">LCD Subpixel</option>
+                            <option value="ascii_color">Colored ASCII</option>
+                            <option value="grayscale">Grayscale</option>
+                        </select>
+                        <input type="range" name="width" min="20" max="300" value="100">
+                    </div>
+                    <button type="submit" class="btn-action" style="margin-top:20px;">Download IMGs As Zip File</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="batch-grid" id="batch-grid">
+        <div class="batch-placeholder">Add images to see previews</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Simplified Batch Logic
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source') || 'device';
+    document.getElementById('btn-' + source).classList.add('active');
+    document.getElementById('source-' + source).style.display = 'block';
+
+    function switchBatchSource(target) {
+        if(target !== source) window.location.href = `{{ url_for('batch') }}?source=${target}`;
+    }
+
+    function resetBatchSettings() { document.getElementById('batch-form').reset(); }
+    function deleteAllBatch() { window.location.reload(); }
+    function validateBatch() { /* Check 10 limit */ }
+</script>
+{% endblock %}

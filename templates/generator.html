@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="generator-layout">
+    <div class="controls-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 style="margin:0;">Generator</h2>
+            <div style="display:flex; gap:5px;">
+                <button type="button" onclick="resetSettings()" class="btn-small">Reset</button>
+                <button type="button" onclick="deleteImage()" class="btn-small" style="color:red; border-color:red;">Delete Image</button>
+            </div>
+        </div>
+        
+        <form id="forge-form">
+            <div class="control-section">
+                <label>1. Image Source</label>
+                <div class="source-toggle">
+                    <button type="button" class="toggle-btn" id="btn-device" onclick="switchSource('device')">Device IMG Source</button>
+                    <button type="button" class="toggle-btn" id="btn-url" onclick="switchSource('url')">URL IMG Source</button>
+                </div>
+
+                <div id="source-device" class="source-content" style="display:none;">
+                    <div class="drop-zone drop-zone-large" id="drop-zone">
+                        <span class="drop-zone__prompt">Drag & Drop Image Here</span>
+                        <div class="drop-zone__thumb" style="display:none;"></div>
+                    </div>
+                    <input type="file" name="image_file" id="file-input" style="display:none;" accept="image/*">
+                </div>
+
+                <div id="source-url" class="source-content" style="display:none;">
+                    <input type="text" id="url-input" name="image_url" placeholder="Paste Image URL here...">
+                    <div class="url-preview-box">
+                        <span id="url-placeholder" style="color:#888; font-size:0.8rem;">Preview will appear here</span>
+                        <img id="url-preview-img" style="display:none;" src="">
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <label>2. Output Mode</label>
+                <select name="mode" id="mode-select">
+                    <option value="subpixel">LCD Subpixel</option>
+                    <option value="solid">Solid Block</option>
+                    <option value="ascii_color">Colored ASCII</option>
+                    <option value="matrix">Matrix Rain</option>
+                    <option value="grayscale">Grayscale ASCII</option>
+                    <option value="dots">Dots / Braille</option>
+                    <option value="line">Line Art</option>
+                    <option value="binary">Binary</option>
+                </select>
+
+                <div class="action-row" style="margin-top:10px;">
+                    <button type="button" id="dl-png-btn" onclick="limitedDownload()" class="btn-action">⬇ PNG (<span id="dl-count">5</span> left)</button>
+                    <button type="button" onclick="copyText()" class="btn-action">📋 Text</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <label>3. Fine Tune</label>
+                <div class="slider-group">
+                    <label>Output Width: <span id="val-width">100</span></label>
+                    <input type="range" name="width" id="input-width" min="20" max="300" value="100" oninput="updateVal('val-width', this.value)">
+                </div>
+                <div class="checkbox-row-left">
+                    <input type="checkbox" name="dither" id="dither-check" value="true">
+                    <label for="dither-check">Enable Dithering</label>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="preview-panel" id="preview-container">
+        <div id="loading-indicator">Processing...</div>
+        <div id="art-output" class="ascii-art">
+            <div class="placeholder-text">Waiting for image...</div>
+        </div>
+        <textarea id="hidden-copy-area" style="display:none;"></textarea>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Rate Limiting Logic
+    let downloadCount = 5;
+    let lastReset = Date.now();
+
+    function updateDownloadUI() {
+        const btn = document.getElementById('dl-png-btn');
+        const countSpan = document.getElementById('dl-count');
+        const now = Date.now();
+
+        if (now - lastReset > 60000) {
+            downloadCount = 5;
+            lastReset = now;
+        }
+
+        countSpan.innerText = downloadCount;
+        btn.disabled = downloadCount <= 0;
+        btn.style.opacity = downloadCount <= 0 ? "0.5" : "1";
+    }
+
+    setInterval(updateDownloadUI, 1000);
+
+    function limitedDownload() {
+        if (downloadCount > 0) {
+            downloadCount--;
+            saveImage('png');
+            updateDownloadUI();
+        }
+    }
+
+    function saveImage(type) {
+        const art = document.getElementById('art-output');
+        const oldTrans = art.style.transform;
+        art.style.transform = 'scale(1)';
+        
+        // Fast render using html2canvas
+        html2canvas(art, { 
+            backgroundColor: window.getComputedStyle(art).backgroundColor, 
+            scale: 2,
+            logging: false,
+            useCORS: true
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'TextCanvas_Export_' + Date.now() + '.' + type;
+            link.href = canvas.toDataURL('image/' + type);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            art.style.transform = oldTrans;
+        });
+    }
+
+    // --- Tab Switching ---
+    const params = new URLSearchParams(window.location.search);
+    const currentSource = params.get('source') || 'device';
+    document.getElementById('btn-' + currentSource).classList.add('active');
+    document.getElementById('source-' + currentSource).style.display = 'block';
+
+    function switchSource(target) {
+        if(target !== currentSource) {
+            if(confirm("Switching sources will refresh and reset. Continue?")) {
+                window.location.href = `{{ url_for('generator') }}?source=${target}`;
+            }
+        }
+    }
+
+    // Existing Logic (Summarized for space)
+    function updateVal(id, val) { document.getElementById(id).innerText = val; }
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const urlInput = document.getElementById('url-input');
+    const outputDiv = document.getElementById('art-output');
+
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drop-zone--over"); });
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropZone.classList.remove("drop-zone--over");
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            const thumb = dropZone.querySelector(".drop-zone__thumb");
+            dropZone.querySelector(".drop-zone__prompt").style.display = 'none';
+            thumb.style.display = 'block';
+            const reader = new FileReader();
+            reader.readAsDataURL(e.dataTransfer.files[0]);
+            reader.onload = () => { thumb.style.backgroundImage = `url('${reader.result}')`; };
+            processImage();
+        }
+    });
+
+    urlInput.addEventListener("input", () => {
+        const img = document.getElementById('url-preview-img');
+        if(urlInput.value.length > 5) {
+            img.src = urlInput.value;
+            img.style.display = 'block';
+            document.getElementById('url-placeholder').style.display = 'none';
+            processImage();
+        }
+    });
+
+    function resetSettings() {
+        document.getElementById('forge-form').reset();
+        processImage();
+    }
+
+    function deleteImage() {
+        window.location.reload();
+    }
+
+    function autoFit() {
+        const art = document.getElementById('art-output');
+        const container = document.getElementById('preview-container');
+        if(!art || !container) return;
+        art.style.transform = 'scale(1)';
+        const scale = Math.min((container.clientWidth-40)/art.scrollWidth, (container.clientHeight-40)/art.scrollHeight);
+        art.style.transformOrigin = 'top center';
+        art.style.transform = `scale(${Math.min(scale, 2)})`;
+    }
+
+    const processImage = async () => {
+        const formData = new FormData(document.getElementById('forge-form'));
+        if(!formData.get('image_url') && fileInput.files.length === 0) return;
+        document.getElementById('loading-indicator').style.display = 'block';
+        const response = await fetch('/api/process', { method: 'POST', body: formData });
+        const data = await response.json();
+        if(data.html) {
+            outputDiv.innerHTML = data.html;
+            document.getElementById('hidden-copy-area').value = data.raw;
+            setTimeout(autoFit, 100);
+        }
+        document.getElementById('loading-indicator').style.display = 'none';
+    };
+
+    document.querySelectorAll('input, select').forEach(i => i.addEventListener('change', processImage));
+    new ResizeObserver(autoFit).observe(document.getElementById('preview-container'));
+    function copyText() { navigator.clipboard.writeText(document.getElementById('hidden-copy-area').value); alert("Copied!"); }
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TextCanvas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-content">
+            <h1 class="app-title">TextCanvas</h1>
+            <p class="welcome-msg">Welcome to TextCanvas! TextCanvas is an Image to Text generator app. Made By Zachory Pelletier.</p>
+            <nav class="navbar">
+                <ul class="nav-links">
+                    <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Home</a></li>
+                    <li><a href="{{ url_for('generator') }}" class="{{ 'active' if request.endpoint == 'generator' }}">TextCanvas Generator</a></li>
+                    <li><a href="{{ url_for('batch') }}" class="{{ 'active' if request.endpoint == 'batch' }}">TextCanvas Batch Generator</a></li>
+                    <li><a href="{{ url_for('page1') }}" class="{{ 'active' if request.endpoint == 'page1' }}">Instructions</a></li>
+                    <li><a href="{{ url_for('page2') }}" class="{{ 'active' if request.endpoint == 'page2' }}">About</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="theme-switch-wrapper">
+             <button id="theme-toggle" class="btn-small">☀/☾</button>
+        </div>
+    </header>
+
+    <div class="content-wrapper">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2025 TextCanvas. Made by Zachory Pelletier.</p>
+    </footer>
+
+    <script>
+        const toggleBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        toggleBtn.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            const target = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', target);
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

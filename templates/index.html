@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="hero-section">
+        <h1>TextCanvas</h1>
+        <p class="subtitle">A Image to Text generator App Made By Zachory Pelletier.</p>
+    </div>
+    
+    <div class="card-grid">
+        <a href="{{ url_for('generator') }}" class="card">
+            <h3>TextCanvas Generator</h3>
+        </a>
+
+        <a href="{{ url_for('batch') }}" class="card">
+            <h3>TextCanvas Batch Generator</h3>
+        </a>
+
+        <a href="{{ url_for('page1') }}" class="card">
+            <h3>Instructions</h3>
+        </a>
+
+        <a href="{{ url_for('page2') }}" class="card">
+            <h3>About</h3>
+        </a>
+    </div>
+</div>
+{% endblock %}
