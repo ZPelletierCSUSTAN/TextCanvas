@@ -1,4 +1,4 @@
-TextCanvas is an app made by Zachory Pelletier. Created using Gemini 1.5 Pro AI model using Google AI Studio.
+TextCanvas is an app made by Zachory Pelletier. Created using Gemini 3 Pro AI model using Google AI Studio.
 
 TextCanvas is a sophisticated, dark-themed Flask web application developed by Zachory Pelletier that features real-time single and batch Image-to-Text conversion with advanced subpixel rendering, matrix effects, and dithering customization options.
 
@@ -18,7 +18,11 @@ TextCanvas/
     ├── page3.html      (IMG to Text Generator)
     └── page4.html      (IMG to Text Batch Generator)
 
-  
+Requirements:
+Flask==3.0.0
+Pillow==10.0.0
+requests==2.31.0
+python-dotenv==1.0.0
 
 AI Prompt:
 
