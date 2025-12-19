@@ -1,28 +1,79 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="dashboard-container">
-    <div class="hero-section">
-        <h1>TextCanvas</h1>
-        <p class="subtitle">A Image to Text generator App Made By Zachory Pelletier.</p>
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-danger">TextCanvas</h1>
+        <p class="lead text-danger">A Image to Text generator App Made By Zachory Pelletier.</p>
+        <!-- Updated Tip Styling: Black BG, Red Text -->
+        <div class="d-inline-block mt-3 p-2 rounded bg-black">
+            <small class="text-danger"><strong>Tip:</strong> Use <kbd class="bg-danger text-white">Arrow Keys</kbd> to move and <kbd class="bg-danger text-white">Enter</kbd> to select.</small>
+        </div>
     </div>
     
-    <div class="card-grid">
-        <a href="{{ url_for('generator') }}" class="card">
-            <h3>TextCanvas Generator</h3>
-        </a>
+    <div class="row g-4 justify-content-center">
+        <!-- Generator -->
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('page3') }}" class="text-decoration-none nav-card-link" tabindex="0">
+                <div class="card h-100 shadow-sm p-4 hover-effect d-flex align-items-center justify-content-center text-center">
+                    <div class="card-title-split">
+                        <span class="title-main text-danger">TextCanvas</span>
+                        <span class="title-sub text-danger">IMG to Text Generator</span>
+                    </div>
+                </div>
+            </a>
+        </div>
 
-        <a href="{{ url_for('batch') }}" class="card">
-            <h3>TextCanvas Batch Generator</h3>
-        </a>
+        <!-- Batch -->
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('page4') }}" class="text-decoration-none nav-card-link" tabindex="0">
+                <div class="card h-100 shadow-sm p-4 hover-effect d-flex align-items-center justify-content-center text-center">
+                    <div class="card-title-split">
+                        <span class="title-main text-danger">TextCanvas</span>
+                        <span class="title-sub text-danger">IMG to Text Batch Generator</span>
+                    </div>
+                </div>
+            </a>
+        </div>
 
-        <a href="{{ url_for('page1') }}" class="card">
-            <h3>Instructions</h3>
-        </a>
+        <!-- Instructions -->
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('page1') }}" class="text-decoration-none nav-card-link" tabindex="0">
+                <div class="card h-100 shadow-sm p-4 hover-effect d-flex align-items-center justify-content-center text-center">
+                    <h5 class="fw-bold text-danger m-0">Instructions</h5>
+                </div>
+            </a>
+        </div>
 
-        <a href="{{ url_for('page2') }}" class="card">
-            <h3>About</h3>
-        </a>
+        <!-- About -->
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('page2') }}" class="text-decoration-none nav-card-link" tabindex="0">
+                <div class="card h-100 shadow-sm p-4 hover-effect d-flex align-items-center justify-content-center text-center">
+                    <h5 class="fw-bold text-danger m-0">About</h5>
+                </div>
+            </a>
+        </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = Array.from(document.querySelectorAll('.nav-card-link'));
+        let focusIndex = -1;
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                e.preventDefault();
+                if (focusIndex === -1) focusIndex = 0;
+                else {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') focusIndex = (focusIndex + 1) % cards.length;
+                    else focusIndex = (focusIndex - 1 + cards.length) % cards.length;
+                }
+                cards[focusIndex].focus();
+            }
+            if (e.key === 'Enter' && document.activeElement.classList.contains('nav-card-link')) {
+                window.location.href = document.activeElement.getAttribute('href');
+            }
+        });
+    });
+</script>
 {% endblock %}

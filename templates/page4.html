@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3 h-100">
+    
+    <div class="controls-panel p-3 mb-3 rounded">
+        <!-- CENTERED TITLE -->
+        <div class="text-center mb-3">
+            <h4 class="fw-bold mb-0 text-danger">TextCanvas IMG To Text Batch Generator</h4>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <small class="text-muted">Global Settings apply to all images</small>
+            <div>
+                <button type="button" onclick="resetBatchSettings()" class="btn btn-outline-secondary btn-sm">Reset</button>
+                <button type="button" onclick="deleteAllBatch()" class="btn btn-outline-danger btn-sm">Delete All</button>
+            </div>
+        </div>
+
+        <div id="batch-error" class="alert alert-danger text-center" style="display:none;"></div>
+
+        <form id="batch-form" onsubmit="return false;">
+            <div class="row">
+                <!-- Source -->
+                <div class="col-md-5 border-end">
+                    <label class="form-label fw-bold text-danger">1. Sources (Max 10)</label>
+                    <div class="source-toggle">
+                        <button type="button" class="toggle-btn" id="btn-device" onclick="switchBatchSource('device')">Device IMG Source</button>
+                        <button type="button" class="toggle-btn" id="btn-url" onclick="switchBatchSource('url')">URL IMG Source</button>
+                    </div>
+
+                    <div id="source-device" style="display:none;">
+                        <div class="drop-zone" id="batch-drop-zone" style="height:100px; cursor:default;">
+                            <span class="text-muted small">Drag & Drop Files (Max 10)</span>
+                        </div>
+                        <input type="file" name="images" id="batch-files" style="display:none;" multiple>
+                        <div class="mini-thumbs" id="device-thumbs"></div>
+                    </div>
+
+                    <div id="source-url" style="display:none;">
+                        <textarea class="form-control" name="image_urls" id="batch-urls" rows="4" placeholder="Paste Image URLs (One per line)..."></textarea>
+                        <div class="mini-thumbs" id="url-thumbs"></div>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="col-md-7">
+                    <label class="form-label fw-bold text-danger">2. Global Settings</label>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <select class="form-select" name="mode" id="batch-mode">
+                                <option value="subpixel">LCD Subpixel</option>
+                                <option value="solid">Solid Block</option>
+                                <option value="ascii_color">Colored ASCII</option>
+                                <option value="matrix">Matrix Rain</option>
+                                <option value="grayscale">Grayscale ASCII</option>
+                                <option value="dots">Dots / Braille</option>
+                                <option value="line">Line Art</option>
+                                <option value="binary">Binary</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <!-- WIDTH LIMIT 150 -->
+                            <label class="small text-danger">Width: <span id="batch-width-val" class="fw-bold">100</span></label>
+                            <input type="range" class="form-range" name="width" id="b-width" min="20" max="150" value="100" oninput="updateBatchVal(this.value)">
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 align-items-center mb-3">
+                        <div class="col-4">
+                            <div class="checkbox-row-left">
+                                <input type="checkbox" name="dither" id="b-dither" value="true">
+                                <label for="b-dither" class="text-danger small">Dithering</label>
+                            </div>
+                        </div>
+                        <div class="col-8 d-flex align-items-center gap-2">
+                            <label class="small text-danger">Color Override:</label>
+                            <input type="color" name="color" value="#ffffff" class="form-control form-control-color" style="width:100%;">
+                        </div>
+                    </div>
+                    
+                    <div class="text-center text-muted small mt-3">
+                        <em>Use the Download button on each individual image below.</em>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <h5 class="text-center text-muted mb-3">Live Previews (Max 10)</h5>
+    <div class="batch-grid" id="batch-grid">
+        <div class="batch-placeholder w-100">Add images or URLs above</div>
+    </div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source') || 'device';
+    document.getElementById('btn-' + source).classList.add('active');
+    document.getElementById('source-' + source).style.display = 'block';
+
+    function switchBatchSource(target) {
+        if(target !== source) {
+            if(confirm("Switching sources will reset the page. Continue?")) {
+                window.location.href = `{{ url_for('page4') }}?source=${target}`;
+            }
+        }
+    }
+
+    function updateBatchVal(val) { document.getElementById('batch-width-val').innerText = val; }
+
+    const fileInput = document.getElementById('batch-files');
+    const urlInput = document.getElementById('batch-urls');
+    const dropZone = document.getElementById('batch-drop-zone');
+    const grid = document.getElementById('batch-grid');
+    const deviceThumbs = document.getElementById('device-thumbs');
+    const urlThumbs = document.getElementById('url-thumbs');
+    const batchForm = document.getElementById('batch-form');
+
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drop-zone--over"); });
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault(); dropZone.classList.remove("drop-zone--over");
+        if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+
+    let activeFiles = [];
+
+    function handleFiles(files) {
+        if((activeFiles.length + files.length) > 10) { alert("Max 10 images"); return; }
+        activeFiles = activeFiles.concat(Array.from(files));
+        const dt = new DataTransfer();
+        activeFiles.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+        deviceThumbs.innerHTML = '';
+        activeFiles.forEach(f => {
+            let t = document.createElement('div'); t.className='mini-thumb';
+            let r = new FileReader(); r.readAsDataURL(f);
+            r.onload=()=>t.style.backgroundImage=`url('${r.result}')`;
+            deviceThumbs.appendChild(t);
+        });
+        updateBatchPreviews();
+    }
+
+    urlInput.addEventListener("input", () => {
+        const urls = urlInput.value.split('\n').filter(u=>u.length>5);
+        if(urls.length > 10) { alert("Max 10 URLs"); return; }
+        urlThumbs.innerHTML = '';
+        urls.forEach(u => {
+            let img = document.createElement('img'); img.className='mini-thumb'; img.src = u;
+            img.onerror = function() { this.style.display='none'; } 
+            urlThumbs.appendChild(img);
+        });
+        updateBatchPreviews();
+    });
+
+    function removeFile(index) {
+        activeFiles.splice(index, 1);
+        const dt = new DataTransfer(); activeFiles.forEach(f => dt.items.add(f)); fileInput.files = dt.files;
+        deviceThumbs.innerHTML = '';
+        activeFiles.forEach(f => {
+            let t = document.createElement('div'); t.className='mini-thumb';
+            let r = new FileReader(); r.readAsDataURL(f); r.onload=()=>t.style.backgroundImage=`url('${r.result}')`; deviceThumbs.appendChild(t);
+        });
+        updateBatchPreviews();
+    }
+
+    function removeUrl(index) {
+        const urls = urlInput.value.split('\n').filter(u=>u.length>5);
+        urls.splice(index, 1);
+        urlInput.value = urls.join('\n');
+        urlInput.dispatchEvent(new Event('input'));
+    }
+
+    function resetBatchSettings() { 
+        document.getElementById('batch-form').reset(); 
+        updateBatchVal(100);
+        updateBatchPreviews(); 
+    }
+    function deleteAllBatch() { window.location.reload(); }
+
+    // Improved Fit Logic for Restricted Grid
+    function fitSmallBox(slotId) {
+        const art = document.querySelector(`#${slotId} .ascii-art-small`);
+        const cont = document.getElementById(slotId);
+        if(!art || !cont) return;
+        
+        art.style.transform = 'scale(1)'; // Reset to measure raw size
+        
+        const wRatio = (cont.clientWidth - 10) / art.scrollWidth;
+        const hRatio = (cont.clientHeight - 10) / art.scrollHeight;
+        const scale = Math.min(wRatio, hRatio, 1); // Scale down if too big, never scale up past 100%
+        
+        art.style.transform = `scale(${scale})`;
+        art.style.transformOrigin = 'top left';
+    }
+
+    function downloadSingle(slotId, idx) {
+        const art = document.querySelector(`#${slotId} .ascii-art-small`);
+        const oldTrans = art.style.transform;
+        
+        art.style.transform = 'scale(1)';
+        
+        html2canvas(art, {
+            backgroundColor: window.getComputedStyle(art).backgroundColor,
+            scale: 2
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `TextCanvas_Batch_${idx+1}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            art.style.transform = oldTrans;
+        });
+    }
+
+    function debounce(func, timeout = 600){
+        let timer;
+        return (...args) => { clearTimeout(timer); timer = setTimeout(() => { func.apply(this, args); }, timeout); };
+    }
+
+    const updateBatchPreviews = debounce(async () => {
+        let items = (source === 'device') ? activeFiles : urlInput.value.split('\n').filter(u=>u.length>5);
+        grid.innerHTML = '';
+        if(items.length === 0) { grid.innerHTML='<div class="batch-placeholder">Add images</div>'; return; }
+        
+        items.forEach((item, idx) => {
+            let div = document.createElement('div'); div.className='batch-card';
+            let removeFn = (source === 'device') ? `removeFile(${idx})` : `removeUrl(${idx})`;
+            let downloadFn = `downloadSingle('slot-${idx}', ${idx})`;
+            
+            div.innerHTML = `
+                <div class="batch-card-header">
+                    <span>IMG ${idx+1}</span>
+                    <div class="d-flex gap-2">
+                        <span class="download-icon" onclick="${downloadFn}" title="Download">⬇</span>
+                        <span class="delete-x" onclick="${removeFn}" title="Remove">×</span>
+                    </div>
+                </div>
+                <div class="batch-card-body" id="slot-${idx}" style="overflow:hidden;">
+                    <div style="color:#777; font-size:0.8rem;">Loading...</div>
+                </div>`;
+            grid.appendChild(div);
+            
+            let fd = new FormData(batchForm);
+            fd.delete('images'); fd.delete('image_urls');
+            if(source === 'device') fd.append('image_file', item);
+            else fd.append('image_url', item);
+
+            fetch('/api/process', { method:'POST', body:fd })
+                .then(r=>r.json())
+                .then(d=> {
+                    let slot = document.getElementById(`slot-${idx}`);
+                    if(d.html) {
+                        slot.innerHTML = `<div class="ascii-art-small">${d.html}</div>`;
+                        setTimeout(() => fitSmallBox(`slot-${idx}`), 50);
+                    } else { slot.innerHTML = `<div class="text-danger small">Load Error</div>`; }
+                })
+                .catch(() => { document.getElementById(`slot-${idx}`).innerHTML = `<div class="text-danger small">Err</div>`; });
+        });
+    });
+
+    const formInputs = document.querySelectorAll('#batch-form input, #batch-form select');
+    formInputs.forEach(i => { 
+        if(i.type !== 'file' && i.id !== 'batch-urls') {
+            i.addEventListener('input', updateBatchPreviews);
+            i.addEventListener('change', updateBatchPreviews);
+        }
+    });
+</script>
+{% endblock %}

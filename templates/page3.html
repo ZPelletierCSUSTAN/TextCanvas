@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3 h-100">
+    <div class="row h-100">
+        
+        <!-- CONTROLS -->
+        <div class="col-lg-4 d-flex flex-column h-100">
+            <div class="controls-panel p-3 h-100 rounded">
+                
+                <div class="text-center mb-3">
+                    <h4 class="fw-bold mb-2 text-danger">IMG to Text Generator</h4>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" onclick="resetSettings()" class="btn btn-outline-secondary btn-sm">Reset</button>
+                        <button type="button" onclick="deleteImage()" class="btn btn-outline-danger btn-sm">Delete Image</button>
+                    </div>
+                </div>
+
+                <form id="forge-form">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-danger">1. Image Source</label>
+                        <div class="source-toggle">
+                            <button type="button" class="toggle-btn" id="btn-device" onclick="switchSource('device')">Device IMG Source</button>
+                            <button type="button" class="toggle-btn" id="btn-url" onclick="switchSource('url')">URL IMG Source</button>
+                        </div>
+
+                        <div id="source-device" style="display:none;">
+                            <div class="drop-zone drop-zone-large" id="drop-zone">
+                                <span class="drop-zone__prompt text-muted">Drag & Drop Image Here</span>
+                                <div class="drop-zone__thumb" style="display:none;"></div>
+                            </div>
+                            <input type="file" name="image_file" id="file-input" style="display:none;" accept="image/*">
+                        </div>
+
+                        <div id="source-url" style="display:none;">
+                            <input type="text" class="form-control" id="url-input" name="image_url" placeholder="Paste Image URL here...">
+                            <div class="url-preview-box">
+                                <span id="url-placeholder" class="text-muted small">Preview</span>
+                                <img id="url-preview-img" style="display:none;" src="">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-danger">2. Output Mode</label>
+                        <select class="form-select mb-2" name="mode" id="mode-select">
+                            <option value="subpixel">LCD Subpixel</option>
+                            <option value="solid">Solid Block</option>
+                            <option value="ascii_color">Colored ASCII</option>
+                            <option value="matrix">Matrix Rain</option>
+                            <option value="grayscale">Grayscale ASCII</option>
+                            <option value="dots">Dots / Braille</option>
+                            <option value="line">Line Art</option>
+                            <option value="binary">Binary</option>
+                        </select>
+
+                        <div class="d-flex gap-2">
+                            <!-- Download Limit Removed -->
+                            <button type="button" onclick="saveImage('png')" class="btn btn-primary flex-fill">⬇ PNG</button>
+                            <button type="button" onclick="copyText()" class="btn btn-secondary flex-fill">📋 Text</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-danger">3. Fine Tune</label>
+                        
+                        <label class="small text-danger">Width: <span id="width-val" class="fw-bold">100</span></label>
+                        <input type="range" class="form-range" name="width" id="input-width" min="20" max="300" value="100" oninput="updateVal(this.value)">
+                        
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <label class="small">Contrast</label>
+                                <input type="range" class="form-range" name="contrast" min="0.5" max="2.0" step="0.1" value="1.0">
+                            </div>
+                            <div class="col-6">
+                                <label class="small">Brightness</label>
+                                <input type="range" class="form-range" name="brightness" min="0.5" max="2.0" step="0.1" value="1.0">
+                            </div>
+                        </div>
+
+                        <div class="checkbox-row-left mt-2">
+                            <input type="checkbox" name="dither" id="dither-check" value="true">
+                            <label for="dither-check" class="text-danger">Enable Dithering</label>
+                        </div>
+                        <label class="small mt-2">Color Override (Ignored for Colored ASCII):</label>
+                        <input type="color" name="color" value="#ffffff" class="form-control form-control-color w-100">
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="preview-panel" id="preview-container">
+                <div id="loading-indicator">Processing...</div>
+                <div id="art-output" class="ascii-art">
+                    <div class="placeholder-text">Waiting for image...</div>
+                </div>
+                <textarea id="hidden-copy-area" style="display:none;"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "scripts_generator.html" ignore missing %}
+<script>
+    // Tab Logic
+    const params = new URLSearchParams(window.location.search);
+    const currentSource = params.get('source') || 'device';
+    document.getElementById('btn-' + currentSource).classList.add('active');
+    document.getElementById('source-' + currentSource).style.display = 'block';
+
+    function switchSource(target) {
+        if(target !== currentSource) {
+            if(confirm("Switching sources will reset the page. Continue?")) window.location.href = `{{ url_for('page3') }}?source=${target}`;
+        }
+    }
+
+    function updateVal(val) { document.getElementById('width-val').innerText = val; }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const urlInput = document.getElementById('url-input');
+    const outputDiv = document.getElementById('art-output');
+
+    if(currentSource === 'device') {
+        dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drop-zone--over"); });
+        dropZone.addEventListener("drop", e => {
+            e.preventDefault(); dropZone.classList.remove("drop-zone--over");
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                const thumb = dropZone.querySelector(".drop-zone__thumb");
+                dropZone.querySelector(".drop-zone__prompt").style.display = 'none';
+                thumb.style.display = 'block';
+                const reader = new FileReader();
+                reader.readAsDataURL(fileInput.files[0]);
+                reader.onload = () => { thumb.style.backgroundImage = `url('${reader.result}')`; };
+                processImage();
+            }
+        });
+    }
+
+    urlInput.addEventListener("input", () => {
+        const img = document.getElementById('url-preview-img');
+        if(urlInput.value.length > 5) {
+            img.src = urlInput.value; img.style.display = 'block';
+            document.getElementById('url-placeholder').style.display = 'none';
+            img.onerror = () => { img.style.display='none'; document.getElementById('url-placeholder').style.display='block'; };
+            processImage();
+        }
+    });
+
+    function resetSettings() { document.getElementById('forge-form').reset(); updateVal(100); processImage(); }
+    function deleteImage() { window.location.reload(); }
+    
+    function autoFit() {
+        const art = document.getElementById('art-output'); const container = document.getElementById('preview-container');
+        if(!art || !container) return; art.style.transform = 'scale(1)';
+        const scale = Math.min((container.clientWidth-40)/art.scrollWidth, (container.clientHeight-40)/art.scrollHeight);
+        art.style.transformOrigin = 'top center'; art.style.transform = `scale(${Math.min(scale, 2)})`;
+    }
+
+    const processImage = async () => {
+        const formData = new FormData(document.getElementById('forge-form'));
+        if(!formData.get('image_url') && fileInput.files.length === 0) return;
+        document.getElementById('loading-indicator').style.display = 'block';
+        try {
+            const res = await fetch('/api/process', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(data.html) {
+                outputDiv.innerHTML = data.html;
+                document.getElementById('hidden-copy-area').value = data.raw;
+                setTimeout(autoFit, 100);
+            }
+        } catch(e) {}
+        document.getElementById('loading-indicator').style.display = 'none';
+    };
+
+    document.querySelectorAll('input, select').forEach(i => i.addEventListener('change', processImage));
+    new ResizeObserver(autoFit).observe(document.getElementById('preview-container'));
+
+    function saveImage(type) {
+        const art = document.getElementById('art-output');
+        const old = art.style.transform;
+        art.style.transform = 'scale(1)';
+        html2canvas(art, { backgroundColor: window.getComputedStyle(art).backgroundColor, scale: 2 }).then(cvs => {
+            const link = document.createElement('a'); link.download = 'TextCanvas.'+type; link.href = cvs.toDataURL(); link.click();
+            art.style.transform = old;
+        });
+    }
+    function copyText() { navigator.clipboard.writeText(document.getElementById('hidden-copy-area').value); alert("Copied!"); }
+</script>
+{% endblock %}
