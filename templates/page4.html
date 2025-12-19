@@ -38,7 +38,11 @@
                     </div>
 
                     <div id="source-url" style="display:none;">
-                        <textarea class="form-control" name="image_urls" id="batch-urls" rows="4" placeholder="Paste Image URLs (One per line)..."></textarea>
+                        <textarea class="form-control mb-0" name="image_urls" id="batch-urls" rows="4" placeholder="Paste Image URLs..."></textarea>
+                        <!-- ADDED NOTE -->
+                        <small class="text-danger d-block mt-1 mb-2" style="font-size:0.75rem;">
+                            <strong>Note:</strong> Paste IMG URLs 1 per line and press CTRL + ENTER to make a new line.
+                        </small>
                         <div class="mini-thumbs" id="url-thumbs"></div>
                     </div>
                 </div>
@@ -60,7 +64,6 @@
                             </select>
                         </div>
                         <div class="col-6">
-                            <!-- WIDTH LIMIT 150 -->
                             <label class="small text-danger">Width: <span id="batch-width-val" class="fw-bold">100</span></label>
                             <input type="range" class="form-range" name="width" id="b-width" min="20" max="150" value="100" oninput="updateBatchVal(this.value)">
                         </div>
@@ -87,7 +90,8 @@
         </form>
     </div>
 
-    <h5 class="text-center text-muted mb-3">Live Previews (Max 10)</h5>
+    <!-- HEADER UPDATED TO RED -->
+    <h5 class="text-center text-danger mb-3">Live Previews (Max 10)</h5>
     <div class="batch-grid" id="batch-grid">
         <div class="batch-placeholder w-100">Add images or URLs above</div>
     </div>
@@ -178,18 +182,14 @@
     }
     function deleteAllBatch() { window.location.reload(); }
 
-    // Improved Fit Logic for Restricted Grid
     function fitSmallBox(slotId) {
         const art = document.querySelector(`#${slotId} .ascii-art-small`);
         const cont = document.getElementById(slotId);
         if(!art || !cont) return;
-        
-        art.style.transform = 'scale(1)'; // Reset to measure raw size
-        
+        art.style.transform = 'scale(1)'; 
         const wRatio = (cont.clientWidth - 10) / art.scrollWidth;
         const hRatio = (cont.clientHeight - 10) / art.scrollHeight;
-        const scale = Math.min(wRatio, hRatio, 1); // Scale down if too big, never scale up past 100%
-        
+        const scale = Math.min(wRatio, hRatio, 1);
         art.style.transform = `scale(${scale})`;
         art.style.transformOrigin = 'top left';
     }
@@ -197,9 +197,7 @@
     function downloadSingle(slotId, idx) {
         const art = document.querySelector(`#${slotId} .ascii-art-small`);
         const oldTrans = art.style.transform;
-        
         art.style.transform = 'scale(1)';
-        
         html2canvas(art, {
             backgroundColor: window.getComputedStyle(art).backgroundColor,
             scale: 2
